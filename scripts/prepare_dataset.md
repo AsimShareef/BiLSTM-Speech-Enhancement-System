@@ -29,11 +29,15 @@ The original `trainset_28spk_wav` archives may need resampling to 16 kHz; the
 
 ## For Colab training
 
-```bash
+Windows ships `tar` (`C:\Windows\System32\tar.exe`); no compression is used
+because WAV data barely shrinks and it is much faster:
+
+```powershell
 cd <repo>
-zip -r voicebank_demand.zip \
-    speech/clean_trainset_wav speech/noisy_trainset_wav \
-    speech/clean_testset_wav  speech/noisy_testset_wav
+tar -cvf voicebank_demand.tar -C speech `
+    clean_trainset_wav noisy_trainset_wav clean_testset_wav noisy_testset_wav
 ```
 
-Upload `voicebank_demand.zip` to `MyDrive/`, then run `notebooks/train_colab.ipynb`.
+Upload `voicebank_demand.tar` (~2.6 GB) to `MyDrive/`, then run
+`notebooks/train_colab.ipynb`. The notebook extracts it with
+`tar -xf ... -C speech`.
