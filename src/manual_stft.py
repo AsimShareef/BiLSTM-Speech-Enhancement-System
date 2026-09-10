@@ -3,7 +3,7 @@ manual_stft.py — Custom STFT/ISTFT implementations from scratch.
 """
 
 import numpy as np
-from scipy.fftpack import fft, ifft
+from scipy.fftpack import ifft
 from config import N_FFT, HOP_LENGTH, WIN_LENGTH, N_FREQ_BINS
 
 
@@ -79,24 +79,17 @@ def manual_stft(x: np.ndarray,
             f"hop_length={hop_length}. Cannot create any frames."
         )
 
-    # ── Compute STFT via FFT of each frame ─────────────────────────────────────
-    D = np.zeros((n_fft // 2 + 1, n_frames), dtype=np.complex64)
-
-    for m in range(n_frames):
-        # Extract frame [n_fft samples starting at m*hop_length]
-        start = m * hop_length
-        frame = x[start:start + n_fft]
-
-        # Apply window
-        windowed_frame = frame * window
-
-        # Compute FFT
-        fft_result = fft(windowed_frame, n=n_fft)
-
-        # Keep only positive frequency bins (0 to n_fft//2)
-        D[:, m] = fft_result[:n_fft // 2 + 1]
-
-    return D
+    # ── Compute STFT ─────────────────────────────────────────────────────────
+    # Same result as an explicit per-frame FFT loop, vectorised: form the
+    # [n_frames, n_fft] matrix of overlapping frames with a strided view, window
+    # every row at once, and take one real FFT along the frame axis. Far faster
+    # than the Python loop, which matters because the training data generator
+    # runs this once per utterance per epoch.
+    frames = np.lib.stride_tricks.sliding_window_view(x, n_fft)[::hop_length]
+    windowed = frames * window                       # [n_frames, n_fft] * [n_fft]
+    D = np.fft.rfft(windowed, n=n_fft, axis=1).astype(np.complex64)  # [n_frames, 257]
+    assert D.shape[0] == n_frames
+    return D.T                                       # -> [257, n_frames]
 
 
 def manual_istft(D: np.ndarray,
