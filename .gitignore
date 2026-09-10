@@ -1,0 +1,37 @@
+# ── Datasets (VoiceBank-DEMAND ~2.6 GB — not versioned) ───────────────────────
+speech/
+data/
+*_trainset_wav/
+*_testset_wav/
+*.zip
+
+# ── Trained weights / checkpoints (attach to a GitHub Release instead) ─────────
+*.keras
+*.h5
+checkpoints/
+logs/
+
+# ── Audio artefacts ──────────────────────────────────────────────────────────
+*.wav
+*.mp3
+*.mpeg
+*.m4a
+*.flac
+!results/samples/**/*.wav        # keep the curated before/after demo clips
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.egg-info/
+
+# ── Loose PDFs at repo root (course handouts etc.) ───────────────────────────
+/*.pdf
+!docs/*.pdf
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+desktop.ini
+.DS_Store
+.ipynb_checkpoints/
