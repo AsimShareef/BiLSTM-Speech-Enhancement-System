@@ -111,18 +111,55 @@ and before/after clips + spectrograms in `results/samples/`.
 
 ## 8. Results
 
-<!-- Paste results/metrics.md here after the Colab run. -->
-_Pending full-corpus training run._
+Full 28-speaker training set (`FRAME_STEP=8`, batch 128), 40 epochs on a Colab
+T4 - `ReduceLROnPlateau` decayed the learning rate to `3.1e-05` and
+`EarlyStopping` never triggered (`val_loss` was still 0.0538 and slowly
+falling at epoch 40, not plateaued), so this is a lower bound on what the
+architecture can reach, not a ceiling. Scored on the full 824-file
+VoiceBank-DEMAND test set:
+
+| Method | PESQ (wb) | STOI | SI-SNR (dB) |
+|---|---|---|---|
+| Noisy (unprocessed) | 1.967 | 0.9211 | 8.45 |
+| Spectral subtraction (α=2.5, β=0.02) | 2.144 | 0.8925 | 13.42 |
+| **BiLSTM + PSM** | **2.620** | **0.9384** | **16.67** |
+
+Deltas vs. noisy input:
+
+| Method | ΔPESQ | ΔSTOI | ΔSI-SNR (dB) |
+|---|---|---|---|
+| Spectral subtraction | +0.177 | -0.0285 | +4.98 |
+| **BiLSTM + PSM** | **+0.652** | **+0.0174** | **+8.22** |
+
+BiLSTM improves on every metric, over both the noisy input and the classical
+baseline. The most informative row is STOI: spectral subtraction *reduces*
+intelligibility (-0.0285) while still improving PESQ and SI-SNR - textbook
+musical-noise behaviour (Section 9). The BiLSTM's spectral floor and
+phase-sensitive target avoid that failure mode and net a small but positive
+STOI gain.
 
 ## 9. Objective vs. subjective behaviour
 
-Observed on the course build and expected to persist: on **high-SNR / already
-clean** input the mask still attenuates real speech (it "expects" noise), so
-SI-SNR *gain* can go negative even when a listener hears no degradation - the
-"do no harm" limitation. Reusing noisy phase also adds sample-level
-misalignment that intrusive metrics penalise more than the ear does. This is
-why the benchmark reports absolute PESQ/STOI/SI-SNR for every system rather than
-only gains, and why per-file CSV is kept for stratified analysis by input SNR.
+**Why spectral subtraction loses STOI while gaining PESQ/SI-SNR.**
+Over-subtracting a fluctuating noise estimate leaves isolated energy spikes in
+the spectrogram ("musical noise" - Section 9 of the classical literature,
+Berouti et al.). These spikes raise the raw signal energy enough to nudge
+SI-SNR and PESQ's distortion terms upward, but they actively confuse STOI's
+envelope-correlation measure, which is sensitive to exactly this kind of
+non-stationary, sound-like-something-else artefact. It is a good illustration
+of why single-metric evaluation is misleading and this benchmark reports all
+three.
+
+**The "do no harm" risk (from the earlier ~100-file course run).** On
+already-clean, high-SNR input a mask trained to hunt noise can still attenuate
+real speech, since it "expects" noise to be present; SI-SNR gain can go
+negative there even when a listener hears no degradation, and reusing the
+noisy phase adds sample-level misalignment that intrusive metrics penalise
+more than the ear does. The aggregate numbers in Section 8 are a mean over 824
+files with a range of input SNRs, so this failure mode may still be present on
+a subset of them even though the average is strongly positive -
+`results/metrics_per_file.csv` has the per-utterance breakdown for that
+stratified check; it has not been re-run at this scale yet.
 
 ## 10. Limitations & future work
 
