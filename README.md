@@ -96,7 +96,9 @@ python src/inference.py --noisy n.wav --clean c.wav
 ```
 
 GPU training: open `notebooks/train_colab.ipynb` in Google Colab (T4).
-Trained weights are attached to the GitHub Release, not committed.
+Trained weights (`bilstm_enhancer.keras`, the run scored above) are attached to
+[Release `bilstm-v1`](https://github.com/AsimShareef/BiLSTM-Speech-Enhancement-System/releases/tag/bilstm-v1),
+not committed to the repo.
 
 ## Limitations
 
