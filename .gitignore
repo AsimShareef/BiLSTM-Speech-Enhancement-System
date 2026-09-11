@@ -4,6 +4,8 @@ data/
 *_trainset_wav/
 *_testset_wav/
 *.zip
+*.tar
+*.tar.gz
 
 # ── Trained weights / checkpoints (attach to a GitHub Release instead) ─────────
 *.keras

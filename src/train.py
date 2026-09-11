@@ -5,6 +5,11 @@ using the streaming `STFTSequence` (flat RAM, all 11 572 files).
     python src/train.py                          # uses paths from config.py
     python src/train.py --epochs 25 --batch 128
     python src/train.py --max-files 500          # quick sanity run
+
+    # On Colab, point checkpoints at Drive so a runtime disconnect doesn't
+    # lose the run (ModelCheckpoint/CSVLogger/history.json + the final model
+    # are all written there as training goes, not just at the end):
+    python src/train.py --checkpoint-dir /content/drive/MyDrive/bilstm_se_out/checkpoints
 """
 
 import os
@@ -46,6 +51,10 @@ def main():
     ap.add_argument("--max-files", type=int, default=None,
                     help="cap training files (debug / smoke runs)")
     ap.add_argument("--out", default=MODEL_PATH)
+    ap.add_argument("--checkpoint-dir", default="checkpoints",
+                    help="point this at a Google-Drive-mounted path on Colab "
+                         "so a disconnect doesn't lose the run, e.g. "
+                         "/content/drive/MyDrive/bilstm_se_out/checkpoints")
     args = ap.parse_args()
 
     banner = "  BiLSTM Speech Enhancement - streaming training  "
@@ -65,10 +74,12 @@ def main():
     model = build_bilstm_model()
     summarise(model)
 
-    os.makedirs("checkpoints", exist_ok=True)
+    ckpt_dir = args.checkpoint_dir
+    os.makedirs(ckpt_dir, exist_ok=True)
+    print(f"[System] checkpoints -> {ckpt_dir}")
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            "checkpoints/best.keras", monitor="val_loss",
+            os.path.join(ckpt_dir, "best.keras"), monitor="val_loss",
             save_best_only=True, verbose=1),
         tf.keras.callbacks.EarlyStopping(
             monitor="val_loss", patience=6,
@@ -76,7 +87,8 @@ def main():
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor="val_loss", factor=0.5, patience=3,
             min_lr=1e-6, verbose=1),
-        tf.keras.callbacks.CSVLogger("checkpoints/history.csv"),
+        tf.keras.callbacks.CSVLogger(os.path.join(ckpt_dir, "history.csv"),
+                                     append=True),
     ]
 
     history = model.fit(
@@ -85,14 +97,15 @@ def main():
     )
 
     model.save(args.out)
-    with open("checkpoints/history.json", "w") as f:
+    model.save(os.path.join(ckpt_dir, os.path.basename(args.out)))  # redundant Drive copy
+    with open(os.path.join(ckpt_dir, "history.json"), "w") as f:
         json.dump({k: [float(x) for x in v] for k, v in history.history.items()}, f, indent=2)
 
     best = min(history.history["val_loss"])
     print("\n" + "-" * 52)
-    print(f"  saved model    -> {args.out}")
+    print(f"  saved model    -> {args.out}  (+ copy in {ckpt_dir})")
     print(f"  best val_loss  -> {best:.6f}")
-    print(f"  history        -> checkpoints/history.csv")
+    print(f"  history        -> {os.path.join(ckpt_dir, 'history.csv')}")
     print("-" * 52)
     print("  next: python src/evaluate.py --model", args.out)
 
